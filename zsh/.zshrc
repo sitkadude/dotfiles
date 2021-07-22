@@ -62,7 +62,7 @@ export ZSH_AUTOSUGGEST_USE_ASYNC="true"
 if [[ -n $SSH_CONNECTION ]]; then
   export EDITOR='nvim'
 else
-  export EDITOR='nvim'
+  export EDITOR='vim'
 fi
 # Compilation flags
 # export ARCHFLAGS="-arch x86_64"
@@ -79,7 +79,7 @@ export SSH_KEY_PATH="~/.ssh/id_ed25519"
 export LC_ALL=en_US.UTF-8
 export LANG=en_US.UTF-8
 alias vim="nvim -p"
-alias vi="vim"
+alias vi="vi"
 alias t="tmux"
 alias date="gdate"
 alias zshconfig="vim ~/.zshrc"
@@ -103,13 +103,25 @@ function ssh () {
 function sssh () {
     /usr/bin/ssh -t $@ "tmux attach || tmux new" || echo "The server you are connecting to doesn't appear to have 'tmux' installed. Try 'ssh' for connecting without automatic tmux connection.";
 }
-function docker-cleanup () {
+function docker-cleanup-old () {
     echo 'removing old containers...';
-    docker rm -v $(docker ps -a -q -f status=exited);
+    docker container rm -v $(docker ps -aqf status=exited);
     echo 'removing old images...';
-    docker rmi $(docker images -f "dangling=true" -q);
+    docker rmi $(docker images -qf "dangling=true");
     echo 'removing old volumes...';
     docker volume rm $(docker volume ls -qf dangling=true);
+}
+function docker-prune-all () {
+    echo 'stopping all containers...';
+    docker kill $(docker ps -q);
+    echo 'removing all containers...';
+    docker stop $(docker ps -aq);
+    echo 'removing all images...';
+    docker rmi $(docker images -q);
+    echo 'removing all volumes...';
+    docker volume rm $(docker volume ls -q);
+    echo 'system prune...';
+    docker system prune -af;
 }
 function update () {
     echo 'Updating OhMyZsh...';
@@ -118,14 +130,19 @@ function update () {
     #pushd "$ZSH_CUSTOM/themes/spaceship-prompt"
     #    git reset --hard && git pull
     #popd
+   
     echo 'Updating homebrew packages...';
     brew update && brew upgrade && brew upgrade --cask;
+   
     echo 'Updating neovim...';
-    #brew reinstall neovim;
-    brew uninstall neovim;
-    brew install --head neovim;
+    brew reinstall neovim;
+    ##for when brew breaks
+    #brew uninstall neovim;
+    #brew install --head neovim;
+   
     echo 'Updating rust...';
     rustup update;
+   
     echo 'Updating rust language server (rust analyzer)...';
     pushd ~/Source/rust-analyzer;
         git reset --hard && git pull
@@ -136,21 +153,71 @@ lto = true\ncodegen-units = 1' Cargo.toml
     # Backup RUSTFLAGS to change for Clap installation.
     tmp=$RUSTFLAGS;
     export RUSTFLAGS="-C target-cpu=native -C link-arg=-undefined -C link-arg=dynamic_lookup";
+   
     echo 'Updating vim-clap...';
     pushd ~/.config/nvim/pack/minpac/opt/vim-clap;
         git reset --hard && git pull
         make
     popd;
     export RUSTFLAGS=$tmp;
+
     echo 'Updating elixir language server (elixir-ls)...';
     pushd ~/Source/elixir-ls;
         rm -rf release/
         git reset --hard && git pull
         yes | mix deps.get && mix compile && mix elixir_ls.release -o release
     popd;
+
+    echo 'Updating erlang language server (erlang_ls)...';
+    pushd ~/Source/rebar3;
+    rebar3 local upgrade
+    popd;
+    pushd ~/Source/erlang_ls;
+        rm /usr/local/bin/erlang_ls /usr/local/bin/els_dap
+        git reset --hard && git pull
+        make
+        make install
+    popd;
+
     echo 'Updating python language server (pyls)...'
     pip3 install 'python-language-server[all]' -U
 
+}
+
+function fix-rust () {
+    echo 'Removing rust...'
+    yes | rustup self uninstall
+    echo 'Removing dangling rust files...'
+    pushd /usr/local/bin;
+    rm /usr/local/bin/cargo
+    rm /usr/local/bin/rust-gdb
+    rm /usr/local/bin/rust-gdbgui
+    rm /usr/local/bin/rust-lldb
+    rm /usr/local/bin/rustc
+    rm /usr/local/bin/rustdoc
+    echo 'Successfully removed dangling rust files.'
+    popd;
+    echo 'Installing rust... '
+    curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh -s -- -y
+}
+function fix-brew () {
+    echo 'Fixing homebrew...'
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    brew update
+    brew update
+    brew doctor
+    brew cleanup
+}
+function fix-brew_links () {
+    echo 'Adding write permissions...'
+    sudo chown -R $(whoami) $(brew --prefix)/*
+}
+function fix-xcode () {
+    echo 'Fixing xcode...'
+    echo 'Removing xcode...'
+    sudo rm -rf /Library/Developer/CommandLineTools
+    echo 'Installing xcode...'
+    xcode-select --install
 }
 function cargo-kernel-mod-xbuild () {
     echo 'Running cargo-xbuild...';
@@ -166,6 +233,12 @@ function daily_grind () {
 	done
 	printf 'Will use "%s" as filename\n' "$fname"
 	touch "$fname"
+}
+function redshift-dev () {
+	echo "Exporting AWS dev profile..."
+	export AWS_PROFILE=blockfi-dev
+	echo "Connecting to EC2 via ssh..."
+	ssh i-0cdaba45be97dfb0c
 }
 #test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
 fpath+=${ZDOTDIR:-~}/.zsh_functions
@@ -189,3 +262,5 @@ export REBAR3=/usr/Source/rebar3
 export PYENV_ROOT="$HOME/.pyenv"
 export PATH="$PYENV_ROOT/bin:$PATH"
 export PYTHONPATH=$PYTHONPATH:/Users/lukasjorgensen/code/blockfi/github/cyclope
+eval "$(direnv hook zsh)"
+export PATH=/Users/lukasjorgensen/.cache/rebar3/bin:$PATH

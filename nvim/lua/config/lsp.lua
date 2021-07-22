@@ -21,13 +21,25 @@ function lsp.init()
 
     lsp.configs.clangd.setup {}
     lsp.configs.dockerls.setup {}
+    lsp.configs.elixirls.setup { cmd = { "/Users/lukasjorgensen/Source/elixir-ls/release/language_server.sh" } }
+    lsp.configs.erlangls.setup {}
+    lsp.configs.gopls.setup {
+        cmd = {"gopls", "serve"},
+        settings = {
+            gopls = {
+                analyses = {
+                    unusedparams = true,
+                },
+                staticcheck = true,
+            },
+        },
+    }
     lsp.configs.jsonls.setup {}
+    lsp.configs.pyls.setup {}
     lsp.configs.rust_analyzer.setup {}
-    lsp.configs.elixirls.setup { cmd = { "/Users/lukasjorgensen/.config/elixir-ls/language_server.sh" } }
     -- lsp.configs.sumneko_lua.setup {on_attach = require'completion'.on_attach}
     lsp.configs.terraformls.setup {}
     lsp.configs.vimls.setup {}
-    lsp.configs.gopls.setup {}
 
     lsp.keymaps()
     lsp.set_signs()

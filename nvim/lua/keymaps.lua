@@ -7,15 +7,11 @@ function keymaps.init()
     set_keymap("", "<Space>,", "<Nop>", {silent = true, noremap = true})
     vim.g.mapleader = " "
     
-    keymaps.goyo()
     keymaps.barbar()
     keymaps.clap()
+    keymaps.goyo()
+    keymaps.limelight()
     keymaps.navigation()
-end
-
-function keymaps.goyo()
-    -- Toggle zenmode
-    set_keymap("n", "<leader>g", ":Goyo<CR>", {silent = true, noremap = true})
 end
 
 function keymaps.barbar()
@@ -55,6 +51,17 @@ function keymaps.clap()
                {silent = true, noremap = true})
     set_keymap("n", "<C-a>", ":<C-u>Clap buffers<CR>",
                {silent = true, noremap = true})
+end
+
+function keymaps.goyo()
+    -- Toggle zenmode
+    set_keymap("n", "<leader>g", ":Goyo<CR>", {silent = true, noremap = true})
+end
+
+function keymaps.limelight()
+    -- Toggle limelight
+    set_keymap("n", "<leader>1", ":Limelight!!<CR>", {silent = true, noremap = true})
+    set_keymap("n", "<leader>2", ":Limelight1<CR>", {silent = true, noremap = true})
 end
 
 function keymaps.navigation()
